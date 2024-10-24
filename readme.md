@@ -25,7 +25,6 @@ This study is a replication of:
 - Publication: t.b.d.
 - Pre-analysis plan: [docs/report/preanalysis.pdf](docs/report/preanalysis.pdf)
 - Study report: [docs/report/report.pdf](docs/report/report.pdf)
-- Computed R Markdown notebook: [docs/report/01-RPr-Chakraborty.pdf](docs/report/01-RPr-Chakraborty.pdf) or [docs/report/01-RPr-Chakraborty.html](docs/report/01-RPr-Chakraborty.html)
 
 ## Repository Contents
 
