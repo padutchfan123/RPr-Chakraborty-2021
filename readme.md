@@ -22,6 +22,7 @@ This study is a replication of:
 
 - OSF Project: https://doi.org/10.17605/OSF.IO/S5MTQ
 - Preregistration: https://doi.org/10.17605/OSF.IO/MJXHD
+- Registered Analysis Report: https://doi.org/10.17605/OSF.IO/647EX 
 - Publication: t.b.d.
 - Pre-analysis plan: [docs/report/preanalysis.pdf](docs/report/preanalysis.pdf)
 - Study report: [docs/report/report.pdf](docs/report/report.pdf)
