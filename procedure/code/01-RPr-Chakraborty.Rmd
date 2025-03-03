@@ -83,8 +83,6 @@ Census American Community Survey (ACS) five-year estimates for 2018 (2014-2018).
 
 There is no **randomization** in the original study.
 
-![](../../docs/report/workflow.jpg "Workflow diagram")
-
 # Computational environment
 
 The study was originally conducted using SaTScan software to implement the Kulldorff spatial scan statistic.
@@ -114,7 +112,8 @@ if(!require(here)){
 groundhog.day <- "2023-06-26"
 set.groundhog.folder(here("data", "scratch", "groundhog"))
 
-groundhog.library(packages, groundhog.day)
+groundhog.library(packages, groundhog.day,
+                  tolerate.R.version='4.4.2')
 # you may need to...
 # install a correct version of R
 # install the rstudioapi package with install.packages("rstudioapi")
