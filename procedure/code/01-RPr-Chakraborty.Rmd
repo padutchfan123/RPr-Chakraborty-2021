@@ -109,7 +109,7 @@ if(!require(here)){
   require(here)
 }
 
-groundhog.day <- "2023-06-26"
+groundhog.day <- "2025-02-01"
 set.groundhog.folder(here("data", "scratch", "groundhog"))
 
 groundhog.library(packages, groundhog.day,
@@ -175,6 +175,17 @@ Details on ACS data collection can be found at <https://www.census.gov/topics/he
 : Disability Subgroup Variables
 
 American Community Survey (ACS) data for sociodemographic subcategories of people with disabilities can be accessed by using the `tidycensus` package to query the Census API. This requires an API key which can be acquired at [api.census.gov/data/key_signup.html](https://api.census.gov/data/key_signup.html).
+
+```{r}
+acs_subject_vars <- load_variables(2018, "acs5/subject")
+acs_vars_S1810 <- acs_subject_vars |> filter(str_detect(name, "S1810"))
+write_csv(acs_vars_S1810, here("data", "metadata", "acs_S1810_vars.csv"))
+
+acs_vars <- load_variables(2018, "acs5")
+acs_vars_C18130 <- acs_vars |> filter(str_detect(name, "C18130"))
+write_csv(acs_vars_C18130, here("data", "metadata", "acs_C18130_vars.csv"))
+```
+
 
 ```{r API-Load-ACS, eval=FALSE}
 # If you wish to use a census API key, run the census_api_key() function in the console
@@ -247,12 +258,12 @@ Optionally, save the raw ACS data to `data/raw/public/acs.gpkg` for use in GIS s
 
 ```{r save-ACS, message = F, eval = FALSE}
 # Save downloaded acs data to acs.gpkg
-write_sf(
+st_write(
   acs,
   here("data", "derived", "public", "acs.gpkg"),
   layer = "acs"
 )
-write_sf(
+st_write(
   state,
   here("data", "derived", "public", "acs.gpkg"),
   layer = "state"
