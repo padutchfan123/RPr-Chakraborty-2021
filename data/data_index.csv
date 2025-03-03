@@ -6,9 +6,9 @@ raw\public,disability_raw.csv,Comma-separated values,ACS 2018 5-year,acs_S1810_v
 raw\public,poverty_raw.csv,Comma-separated values,ACS 2018 5-year,acs_C18130_vars.csv,provided
 raw\public\chakraborty,table1.csv,Comma-separated values,Digitized in Excel from Table 1 of the original manuscript,,
 raw\public\chakraborty\Aug1data,Aug1data.shp,ESRI Shapefile,Chakraborty 2021 - author provided data from Johns Hopkins COVID dashboard,metadata_covid.xml,provided
-raw\public\chakraborty\,Aug1GEEdata.csv,Comma-separated values,Chakraborty 2021 - author provided data,,provided
-raw\public\chakraborty\,SatScan_output.dbf,dBASE,Chakraborty 2021 - author provided data,,provided
-raw\public\chakraborty\,SatScan_results.txt,Text,Chakraborty 2021 - author provided data,,provided
+raw\public\chakraborty\,Aug1GEEdata.csv,Comma-separated values,Chakraborty 2021 - author provided data - derived input for GEE models,,provided
+raw\public\chakraborty\,SatScan_output.dbf,dBASE,Chakraborty 2021 - author provided data - output from SatSCAN,,provided
+raw\public\chakraborty\,SatScan_results.txt,Text,Chakraborty 2021 - author provided data - output from SatSCAN,,provided
 derived\public\satscan,sat_scan_rpr.gis.shp,ESRI Shapefile,SaTScan spatial scan for COVID-19 clusters - counties in clusters,sat_scan_rpr.txt,provided
 derived\public\satscan,sat_scan_rpr.col.shp,ESRI Shapefile,SaTScan spatial scan for COVID-19 clusters - cluster centers and radii,sat_scan_rpr.txt,provided
 derived\public\satscan,sat_scan_rpr.txt,text,SaTScan spatial scan for COVID-19 clusters - output report,sat_scan_rpr.txt,provided
