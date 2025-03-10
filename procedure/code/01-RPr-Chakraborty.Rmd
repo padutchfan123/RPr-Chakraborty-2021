@@ -67,13 +67,15 @@ Although the original publication does not state null hypotheses for each bivari
 
 > OR-H1.1: There is no correlation between the COVID-19 incidence rate and the percentage of people with disabilities at the county level.
 > OR-H1.2: There is no correlation between the COVID-19 incidence rate and the percentage of white people with disabilities at the county level.
-> ... OR-H1.18 There is no correlation between the COVID-19 incidence rate and the percentage of female people with disabilities at the county level.
+> ...
+> OR-H1.18 There is no correlation between the COVID-19 incidence rate and the percentage of female people with disabilities at the county level.
 
 Five multi-variate hypotheses are tested for associations between COVID-19 cumulative incidence rates and subgroups of PwDs at the county level.
 Although the original publication does not state null hypotheses for each model, we may formulate them as follows:
 
 > OR-H2.1: The percentages of people with disability, categorized by race, are not associated with COVID-19 incidence at the county level when accounting for the state and risk level of COVID-19 clusters.
-> ... OR-H2.5: The percentages of people with disability, categorized by gender, are not associated with COVID-19 incidence at the county level when accounting for the state and risk level of COVID-19 clusters.
+> ...
+> OR-H2.5: The percentages of people with disability, categorized by gender, are not associated with COVID-19 incidence at the county level when accounting for the state and risk level of COVID-19 clusters.
 
 The **spatial extent** of the study is the continental United States (48 contiguous states and Washington D.C.) The **spatial scale** of the analysis is at the county level.
 Both COVID-19 incidence rates and demographic variables are all measured at the county level.
@@ -145,32 +147,32 @@ knitr::opts_chunk$set(
 The American Community Survey (ACS) five-year estimate (2014-2018) variables used in the study are outlined in the table below.
 Details on ACS data collection can be found at <https://www.census.gov/topics/health/disability/guidance/data-collection-acs.html> and details on sampling methods and accuracy can be found at <https://www.census.gov/programs-surveys/acs/technical-documentation/code-lists.html>.
 
-|                            Variable Name in Study                            |                                               ACS Variable name                                                |
+| Variable Name in Study | ACS Variable name |
 |:----------------------------------:|:----------------------------------:|
-| percent of total civilian non-institutionalized population with a disability |                                                 S1810_C03_001E                                                 |
-|                                   **Race**                                   |                                                                                                                |
-|                      percent w disability: White alone                       |                                                 S1810_C03_004E                                                 |
-|                      percent w disability: Black alone                       |                                                 S1810_C03_005E                                                 |
-|                    percent w disability: Native American                     |                                                 S1810_C03_006E                                                 |
-|                      percent w disability: Asian alone                       |                                                 S1810_C03_007E                                                 |
-|                       percent w disability: Other race                       |                                                 S1810_C03_009E                                                 |
-|                                **Ethnicity**                                 |                                                                                                                |
-|                   percent w disability: Non-Hispanic White                   |                                                S1810_C03_0011E                                                 |
-|                        percent w disability: Hispanic                        |                                                 S1810_C03_012E                                                 |
-|                 percent w disability: Non-Hispanic non-White                 | (S1810_C02_001E - S1810_C02_011E - S1810_C02_012E) / (S1810_C01_001E - S1810_C01_011E - S1810_C01_012E) \* 100 |
-|                       percent w disability: Other race                       |                                                 S1810_C03_009E                                                 |
-|                                 **Poverty**                                  |                                                                                                                |
-|                  percent w disability: Below poverty level                   |                         (C18130_004E + C18130_011E + C18130_018E) / C18130_001E \* 100                         |
-|                  percent w disability: Above poverty level                   |                         (C18130_005E + C18130_012E + C18130_019E) / C18130_001E \* 100                         |
-|                                   **Age**                                    |                                                                                                                |
-|                          percent w disability: 5-17                          |                                                 S1810_C03_014E                                                 |
-|                         percent w disability: 18-34                          |                                                 S1810_C03_015E                                                 |
-|                         percent w disability: 35-64                          |                                                 S1810_C03_016E                                                 |
-|                         percent w disability: 65-74                          |                                                 S1810_C03_017E                                                 |
-|                          percent w disability: 75+                           |                                                 S1810_C03_018E                                                 |
-|                              **Biological sex**                              |                                                                                                                |
-|                          percent w disability: male                          |                                                 S1810_C03_001E                                                 |
-|                         percent w disability: female                         |                                                 S1810_C03_003E                                                 |
+| percent of total civilian non-institutionalized population with a disability | S1810_C03_001E |
+| **Race** |  |
+| percent w disability: White alone | S1810_C03_004E |
+| percent w disability: Black alone | S1810_C03_005E |
+| percent w disability: Native American | S1810_C03_006E |
+| percent w disability: Asian alone | S1810_C03_007E |
+| percent w disability: Other race | S1810_C03_009E |
+| **Ethnicity** |  |
+| percent w disability: Non-Hispanic White | S1810_C03_0011E |
+| percent w disability: Hispanic | S1810_C03_012E |
+| percent w disability: Non-Hispanic non-White | (S1810_C02_001E - S1810_C02_011E - S1810_C02_012E) / (S1810_C01_001E - S1810_C01_011E - S1810_C01_012E) \* 100 |
+| percent w disability: Other race | S1810_C03_009E |
+| **Poverty** |  |
+| percent w disability: Below poverty level | (C18130_004E + C18130_011E + C18130_018E) / C18130_001E \* 100 |
+| percent w disability: Above poverty level | (C18130_005E + C18130_012E + C18130_019E) / C18130_001E \* 100 |
+| **Age** |  |
+| percent w disability: 5-17 | S1810_C03_014E |
+| percent w disability: 18-34 | S1810_C03_015E |
+| percent w disability: 35-64 | S1810_C03_016E |
+| percent w disability: 65-74 | S1810_C03_017E |
+| percent w disability: 75+ | S1810_C03_018E |
+| **Biological sex** |  |
+| percent w disability: male | S1810_C03_001E |
+| percent w disability: female | S1810_C03_003E |
 
 : Disability Subgroup Variables
 
@@ -185,7 +187,6 @@ acs_vars <- load_variables(2018, "acs5")
 acs_vars_C18130 <- acs_vars |> filter(str_detect(name, "C18130"))
 write_csv(acs_vars_C18130, here("data", "metadata", "acs_C18130_vars.csv"))
 ```
-
 
 ```{r API-Load-ACS, eval=FALSE}
 # If you wish to use a census API key, run the census_api_key() function in the console
@@ -1363,13 +1364,13 @@ The maps and crosstabulation above indicate that there are important differences
 
 We summarize our understanding of the computational differences for default settings below, based on close examination of our software outputs, technical documentation for SaTScan, and the documentation and code repository for SpatialEpi.
 
-|                          |      SaTScan Hierarchical      |            SaTScan GINI            |                  SpatialEpi                  |
+|   | SaTScan Hierarchical | SaTScan GINI | SpatialEpi |
 |:----------------:|:----------------:|:----------------:|:----------------:|
-|     possible shapes      |  circle (default) or ellipse   |    circle (default) or ellipse     |                    circle                    |
-| possible cluster centers | locations with rates \> normal |   locations with rates \> normal   |                all locations                 |
-|   maximum cluster size   |          50% of cases          | varies, not exceeding 50% of cases |              50% of population               |
-|  maximum *p* of cluster  |              1.00              |                1.00                |                     0.05                     |
-|         distance         |     spherical great circle     |       spherical great circle       | spherical equidistant cylindrical projection |
+| possible shapes | circle (default) or ellipse | circle (default) or ellipse | circle |
+| possible cluster centers | locations with rates \> normal | locations with rates \> normal | all locations |
+| maximum cluster size | 50% of cases | varies, not exceeding 50% of cases | 50% of population |
+| maximum *p* of cluster | 1.00 | 1.00 | 0.05 |
+| distance | spherical great circle | spherical great circle | spherical equidistant cylindrical projection |
 
 To further interrogate the differences in sets of secondary clusters, we must understand that theoretically each location (county), may be the center of many different circular clusters defined by different radii, starting with a radius of 0 and the one county at the center, and expanding until the maximum cluster size is reached.
 
@@ -1885,8 +1886,6 @@ tm_gee_weights
 
 # re
 ```
-
-
 
 ```{r save-figures, eval = F}
 # save figures as image files
