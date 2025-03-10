@@ -98,7 +98,7 @@ We received the COVID-19 case data through 8/1/2020 at the county level from the
 packages <- c(
   "tidycensus", "tidyverse", "downloader", "sf", "classInt", "readr",
   "here", "s2", "pastecs", "tmap", "SpatialEpi", "svDialogs",
-  "geepack", "knitr", "kableExtra", "foreign", "broom", "dotwhisker", "dotenv"
+  "geepack", "knitr", "kableExtra", "foreign", "broom", "dotwhisker", "dotenv", "tmap"
 )
 
 # load and install required packages
@@ -151,15 +151,111 @@ In-class discussion included exposure to some workflow from a previous reproduct
 
 ### Step 1: Acquire John's Hopkins COVID data
 
-Data at the county level, for the continental US only.
+Examine ACS variables from relevant tables
+
+```{r}
+acs_subject_vars <- load_variables(2018, "acs5/subject")
+acs_vars_S1810 <- acs_subject_vars |> dplyr::filter(str_detect(name, "S1810"))
+write_csv(acs_vars_S1810, here("data", "metadata", "acs_S1810_vars.csv"))
+
+acs_vars <- load_variables(2018, "acs5")
+acs_vars_C18130 <- acs_vars |> dplyr::filter(str_detect(name, "C18130"))
+write_csv(acs_vars_C18130, here("data", "metadata", "acs_C18130_vars.csv"))
+```
+
+Query ACS: data at the county level, for the continental US only.
+
+```{r API-Load-ACS, eval=FALSE}
+# Query disability demographic data with geographic boundaries
+acs <- get_acs(
+  geography = "county",
+  table = "S1810",
+  year = 2018,
+  output = "wide",
+  cache_table = TRUE,
+  geometry = TRUE,
+  keep_geo_vars = TRUE
+)
+
+# Query poverty and disability data
+acs_pov <- get_acs(
+  geography = "county",
+  table = "C18130",
+  year = 2018,
+  output = "wide",
+  cache_table = TRUE
+)
+
+# Query state geographic data
+state <- get_acs(
+  geography = "state",
+  year = 2018,
+  variables = c("B01001_001"),
+  geometry = TRUE,
+  keep_geo_vars = TRUE
+)
+
+# Save query results
+saveRDS(acs, here("data", "raw", "public", "acs.RDS"))
+saveRDS(acs_pov, here("data", "raw", "public", "acs_pov.RDS"))
+saveRDS(state, here("data", "raw", "public", "state.RDS"))
+```
+
+Load ACS data
+
+```{r load-acs}
+acs <- readRDS(here("data", "raw", "public", "acs.RDS"))
+acs_pov <- readRDS(here("data", "raw", "public", "acs_pov.RDS"))
+state <- readRDS(here("data", "raw", "public", "state.RDS"))
+```
+
+Transformations: to be consistent with study extent, exclude Alaska, Hawai'i and Puerto Rico from the dataset.
+
+Also, join poverty ACS variable to other ACS data using GEOID to create one dataset with all of the study variables.
+
+Finally, transform the ACS geographic data into Contiguous USA Albers Equal Area projection and fix geometry errors.
+
+```{r filter-join-acs}
+# Remove Alaska, Hawaii & Puerto Rico,
+# transform coordinate system and fix geometries
+acs <- dplyr::filter(acs, !STATEFP %in% c("02", "15", "72")) %>%
+  st_transform(5070) %>%
+  st_make_valid()
+
+# Remove Alaska, Hawaii & Puerto Rico,
+state <- dplyr::filter(state, !STATEFP %in% c("02", "15", "72")) %>%
+  st_transform(5070)
+
+# Join poverty data to disability data
+acs <- left_join(acs, acs_pov, by = "GEOID")
+rm(acs_pov)
+```
 
 ### Step 2: Calculate incident rate by county
 
-cases per county / 100,000
+Load COVID data
 
-### Map: COVID incident rate data
+```{r load-covid-data}
+covid <- read_sf(here("data", "raw", "public", "covidcase080120.gpkg"))
 
-Use `ggplot()` or `tmap()`
+# select and rename the fips code, population, cases, and x,y coordinates
+covid <- select(covid,
+  fips = FIPS,
+  pop = POP_ESTIMA,
+  cases = Confirmed,
+  x = X, y = Y
+)
+```
+
+Calculate incidence rate (cases per 100,000 people)
+
+Convert the COVID data to a non-geographic data frame.
+
+```{r covid-rate}
+covid_table <- covid %>%
+  mutate(covid_rate = round(covid$cases / covid$pop * 100000, 2)) %>%
+  st_drop_geometry()
+```
 
 ### Step 3: Acquire ACS data
 
@@ -167,17 +263,142 @@ Join variables from `acs_vars_S1810` and `acs5_c18130`
 
 ### Step 4: Join ACS to COVID data
 
-### Step 5: Mutate
+Join dependent COVID data to independent ACS demographic data.
 
-Number of PwDs / total from each PwD variable \* 100
+```{r join-covid-to-acs}
+# Join COVID incidence rate data to acs data
+acs_covid <- acs_derived %>%
+  left_join(covid_table, by = "fips")
+
+# move covid_rate column prior to disability percentages
+acs_covid <- acs_covid %>%
+  select(fips, statefp, county, county_st, covid_rate, everything())
+
+rm(acs, acs_derived, covid)
+```
+
+**Unplanned deviation for reproduction**: There is one county with missing disability and poverty data.
+This was not mentioned in the original study or in our pre-analyis plan.
+However, we replace the missing data with zeros, producing results identical to Chakraborty's.
+
+```{r missing data}
+# county with missing data
+dplyr::filter(acs_covid, is.na(bpov_pct)) %>% st_drop_geometry() %>% kable()
+
+# replace NA with 0 for missing data
+acs_covid[is.na(acs_covid$bpov_pct), ]$bpov_pct <- 0
+acs_covid[is.na(acs_covid$apov_pct), ]$apov_pct <- 0
+```
+
+### Map: COVID incident rate data
+
+```{r map-covid-rates, message = FALSE}
+tmap_mode(mode = "plot")
+
+tm_covid_rates <- tm_shape(acs_covid) +
+  tm_polygons("covid_rate",
+    title = "COVID-19 Cases per 100,000 people\n(22 January 2020 to 1 August 2020)",
+    style = "quantile",
+    border.alpha = .2,
+    lwd = 0.2,
+    palette = "Oranges",
+  ) +
+  tm_shape(state) +
+    tm_borders("grey", lwd = .2) +
+  tm_layout(
+    legend.position = c("left", "bottom"),
+    legend.title.size = 0.5,
+    legend.text.size = 0.5
+  )
+
+tm_covid_rates #render map
+```
+
+### Step 5: Mutate PwD variables
+
+Calculate independent socio-demographic variables of people with disabilities as percentages for each sub-category of disability (race, ethnicity, poverty, age, and biological sex) and remove raw census data from the data frame (workflow step 4).
+Reproject the data into an Albers equal area conic projection.
+
+Number of PwDs / total from each PwD variable * 100
+
+```{r Preprocess-ACS}
+# calculate percentages
+acs_derived <- mutate(acs,
+  dis_pct = S1810_C02_001E / S1810_C01_001E * 100,
+  white_pct = S1810_C02_004E / S1810_C01_001E * 100,
+  black_pct = S1810_C02_005E / S1810_C01_001E * 100,
+  native_pct = S1810_C02_006E / S1810_C01_001E * 100,
+  asian_pct = S1810_C02_007E / S1810_C01_001E * 100,
+  other_pct =
+    (S1810_C02_008E + S1810_C02_009E + S1810_C02_010E) / S1810_C01_001E * 100,
+  non_hisp_white_pct = S1810_C02_011E / S1810_C01_001E * 100,
+  hisp_pct = S1810_C02_012E / S1810_C01_001E * 100,
+  non_hisp_non_white_pct =
+    (S1810_C02_001E - S1810_C02_012E - S1810_C02_011E) / S1810_C01_001E * 100,
+  bpov_pct = (C18130_004E + C18130_011E + C18130_018E) / C18130_001E * 100,
+  apov_pct = (C18130_005E + C18130_012E + C18130_019E) / C18130_001E * 100,
+  pct_5_17 = S1810_C02_014E / S1810_C01_001E * 100,
+  pct_18_34 = S1810_C02_015E / S1810_C01_001E * 100,
+  pct_35_64 = S1810_C02_016E / S1810_C01_001E * 100,
+  pct_65_74 = S1810_C02_017E / S1810_C01_001E * 100,
+  pct_75 = S1810_C02_018E / S1810_C01_001E * 100,
+  male_pct = S1810_C02_002E / S1810_C01_001E * 100,
+  female_pct = S1810_C02_003E / S1810_C01_001E * 100
+)
+
+# select only relevant geographic identifiers and derived percentages
+acs_derived <- acs_derived %>%
+  select(
+    fips = GEOID,
+    statefp = STATEFP,
+    county = NAME.x,
+    county_st = NAME,
+    contains("pct")
+  )
+```
 
 ### Map: PwD rates by county
 
-Use `ggplot()` or `tmap()`
+**Unplanned deviation for reproduction**: We also map the spatial distribution of the percent of people with any disability to improve our understanding of the geographic patterns and relationships of between the overarching independent variable (percentage of people with disability) and the dependent variable (COVID-19 incidence rate).
+
+```{r map-disability-rates, message = FALSE}
+tm_disability_rates <- tm_shape(acs_covid) +
+  tm_polygons("dis_pct",
+    title = "Percent of People with Disability\n(ACS 2014-2018)",
+    style = "quantile",
+    border.alpha = .2,
+    lwd = 0.2,
+    palette = "Blues"
+  ) +
+  tm_shape(state) +
+  tm_borders("grey", lwd = .5) +
+  tm_layout(
+    legend.position = c("left", "bottom"),
+    legend.title.size = 0.5,
+    legend.text.size = 0.5
+  )
+
+tm_disability_rates
+```
 
 ### Step 6: `summarise()`
 
-Calculate summary statistics for PwD variables (Min, Max, Mean, SD)
+Calculate summary statistics for dependent COVID-19 rate and independent PwD socio-demographic characteristics (Min, Max, Mean, SD) to reproduce columns of original study table 1
+
+```{r descriptive-statistics}
+acs_covid_stats <- acs_covid %>%
+  st_drop_geometry() %>%
+  select(covid_rate, contains("pct")) %>%
+  stat.desc(norm = TRUE) %>%
+  round(2) %>%
+  t() %>%
+  as.data.frame() %>%
+  select(min, max, mean, SD = std.dev)
+
+acs_covid_stats %>%
+  kable(caption = "Reproduced Descriptive Statistics",
+        align = "c")
+```
 
 ### Step 7: Bivariate Pearson product-moment correlations
 
@@ -187,19 +408,229 @@ Correlate `cor()` COVID cases, pct disability for each disability variable
 
 `mutate( t = abs(r) / sqrt((1 - r\^2) / (df)), p = pt(t, df, lower.tail = FALSE) )`
 
+```{r pearsons-correlation}
+df <- sum(!is.na(acs_covid$dis_pct)) - 2
+
+pearsons_r <- acs_covid %>%
+  select(where(is.numeric)) %>%
+  st_drop_geometry() %>%
+  cor(method = "pearson", use = "everything") %>%
+  as.data.frame() %>%
+  select(r = covid_rate) %>%
+  mutate(
+    t = abs(r) / sqrt((1 - r^2) / (df)),
+    p = pt(t, df, lower.tail = FALSE)
+  ) %>%
+  round(3) %>%
+  rownames_to_column("variable") %>%
+  dplyr::filter(variable != "covid_rate")
+
+pearsons_r %>%
+  kable(caption = "Reproduced Pearson's R",
+        align = "c") %>%
+  column_spec(2:4, width = "4em") %>%
+  kable_styling(full_width = FALSE)
+```
+
 ### Check results with Table 1
 
 #### Digitize Table 1 from original study
 
 Subtract results from Chakraborty's Table 1
 
+Compare reproduced descriptive statistics to original descriptive statistics.
+Difference is calculated as 'reproduction study - original study'.
+Identical results will result in zero.
+
+```{r compare-descriptive-stats}
+# load original table 1 results
+table1 <- read.csv(here("data", "raw", "public", "chakraborty", "table1.csv"))
+
+# subtract original results from reproduced results
+(select(acs_covid_stats, min, max, mean, SD) -
+  select(table1, min, max, mean, SD)) %>%
+  kable(caption = "Descriptive Statistics Comparison",
+        align = "c") %>%
+  column_spec(2:5, width = "4em") %>%
+  kable_styling(full_width = FALSE)
+
+rm(acs_covid_stats)
+```
+
+Compare the reproduced Pearson's *r* correlation coefficients to the original study's Pearson's *r* correlation coefficients.
+Stars indicates the significance level with two stars for `p < 0.01` and one star for `p < 0.05`.
+Correlation difference `rp_r_diff` is calculated between the reproduction study `rp_r` and original study `or_r` as `rp_r_diff = rp_r - or_r` Direction difference `rp_dir_diff` is calculated as `(rp_r > 0) - (or_r > 0)`, giving `0` if both coefficients have the same direction, `1` if the reproduction is positive and the original is negative, and `-1` if the reproduction is negative but the original is positive.
+
+```{r compare-pearsons-correlation}
+# calculate number of significance stars at p < 0.01 and p < 0.05 levels.
+pearsons_r <- mutate(pearsons_r, rp_stars = as.numeric(as.character(cut(p,
+  breaks = c(-0.1, 0.01, 0.05, 1),
+  labels = c(2, 1, 0)
+))))
+
+# join reproduction coefficients to original study coefficients
+correlations <- table1 %>%
+  dplyr::filter(variable != "covid_rate") %>%
+  select(variable, or_r = r, or_stars = stars) %>%
+  left_join(select(pearsons_r, variable, rp_r = r, rp_stars), by = "variable")
+
+# find difference between coefficient and stars
+correlations <- correlations %>%
+  bind_cols(rename_with(
+    correlations[, 4:5] - correlations[, 2:3],
+    ~ paste0(.x, "_diff")
+  ))
+
+# find coefficients with different directions
+correlations <- correlations %>% mutate(rp_dir_diff = (rp_r > 0) - (or_r > 0))
+
+correlations %>%
+  kable(caption = "Compare reproduced and original Pearson's R",
+        col.names = c("Variable", "R", "Sig. Level", "R", "Sig. Level", "R", "Sig. Level", "Direction"),
+        align = "c") %>%
+  kable_styling() %>%
+  add_header_above(c(" " = 1, "Original" = 2, "Reproduced" = 2, "Difference" = 3))
+```
+
+Reproduction correlation coefficients varied slightly from the original study coefficients by +/- 0.006.
+All but one Pearson's correlation coefficient was significant to the same level, and the exception was age 18 to 34.
+Counter-intuitively, the correlation coefficient was slightly closer to 0 but the *p* value was also found to be more significant, suggesting a difference in the estimation of *t* and/or *p*, or a typographical error.
+All of the coefficients had the same direction.
+
 ## *Planned Deviation*
 
 ### Step 8: Kulldorff method with `SpatialEpi` package
 
+First, calculate the Kulldorff spatial scan statistic using SpatialEpi.
+Optionally, skip this code block due to long run times of more than 10 minutes.
+
+```{r SpatialEpi-Kulldorff, eval = FALSE, fig.width=4, fig.height=4}
+start_time <- Sys.time()
+covid_geo <- covid_table %>%
+  select(x, y) %>%
+  latlong2grid()
+# latlong2grid creates approximate equidistant cylindrical grid
+# could probably reproject to epsg 5070 and create table with x and y
+
+# calculate expected cases with one strata
+expected.cases <- expected(covid_table$pop, covid_table$cases, 1)
+
+# Kulldorff spatial scan statistic
+covid_kulldorff <- kulldorff(
+  geo = covid_geo,
+  cases = covid_table$cases,
+  population = covid_table$pop,
+  expected.cases = expected.cases,
+  pop.upper.bound = 0.5,
+  n.simulations = 999,
+  alpha.level = 0.05,
+  plot = TRUE
+)
+
+print(
+  paste(
+    "Run time:",
+    round(difftime(Sys.time(), start_time, units = "mins"), 2),
+    "minutes"
+  ),
+  quote = FALSE
+)
+rm(covid_geo, expected.cases, start_time)
+
+# save results in a file appended with the current date
+saveRDS(covid_kulldorff,
+  file = here("data", "derived", "public", paste0("covid_kulldorff_", Sys.Date(), ".RDS"))
+)
+```
+
+Load pre-calculated Kulldorff results
+
+```{r load-Kulldorff}
+# load pre-calculated Kulldorff results
+# alternatively, modify the file name with an appended date to load a more current set of results
+covid_kulldorff <- readRDS(
+  here("data", "derived", "public", "covid_kulldorff.RDS")
+)
+```
+
+Report Kulldorff spatial scan results.
+
+```{r report-Kulldorff}
+print("Most likely cluster:", quote = FALSE)
+covid_kulldorff$most.likely.cluster
+print(
+  paste0(
+    "Number of Secondary clusters: ",
+    length(covid_kulldorff$secondary.clusters)
+  ),
+  quote = FALSE
+)
+```
+
+Assign unique cluster ID's to each county within a cluster.
+Clusters include the county at the center of a cluster and all of the other counties within the cluster radius.
+Therefore, we use the FIPS code of the county at the center of each cluster as the unique cluster ID.
+
+```{r assign-cluster-IDs, message = FALSE}
+# list of primary cluster locations (counties)
+cluster_locations <- covid_kulldorff$most.likely.cluster$location.IDs.included
+
+# create data frame of clusters and
+# calculate the clusterID as the first (center) county FIPS code
+clusters <- covid_table[cluster_locations, "fips"] %>%
+  mutate(clusterID = covid_table[[cluster_locations[1], "fips"]],
+         likelihood = covid_kulldorff$most.likely.cluster$log.likelihood.ratio)
+
+# Get a list of secondary clusters
+secondary <- covid_kulldorff$secondary.clusters
+
+# similarly add counties in each secondary cluster to the list of clusters
+for (i in secondary) {
+  cluster_locations <- i$location.IDs.included
+  new_clusters <- covid_table[cluster_locations, "fips"] %>%
+    mutate(clusterID = covid_table[[cluster_locations[1], "fips"]],
+           likelihood = i$log.likelihood.ratio)
+  clusters <- clusters %>% rbind(new_clusters)
+}
+
+rm(cluster_locations, secondary, i, new_clusters)
+```
+
 ### Map: Spatial Clusters
 
-Use `ggplot()` or `tmap()`
+```{r join-clusterID-to-acs_covid}
+acs_covid <- acs_covid %>%
+  left_join(clusters, by = "fips") %>%
+  mutate(isCluster = case_when(
+    clusterID == fips ~ "center of cluster",
+    !is.na(clusterID) ~ "other part of cluster",
+    .default = NA
+  ))
+```
+
+```{r map-clusters}
+tm_spatialepi_clusters <-
+  tm_shape(state) +
+    tm_fill("gray98") +
+  tm_shape(acs_covid) +
+  tm_polygons(col = "isCluster",
+          palette = "-Oranges",
+          popup.vars = c("fips", "clusterID"),
+          colorNA = NULL,
+          title = "SpatialEpi Kulldorff COVID-19 Clusters",
+          border.col = "white",
+          lwd = 0.2,
+          border.alpha = 0.2) +
+  tm_shape(state) +
+    tm_borders("grey", lwd = 0.5) +
+  tm_layout(
+    legend.position = c("left", "bottom"),
+    legend.title.size = 0.8,
+    legend.text.size = 0.5
+  )
+
+tm_spatialepi_clusters
+```
 
 ### Step 9: Calculate relative risk
 
@@ -207,11 +638,79 @@ Use `ggplot()` or `tmap()`
 
 Classify counties using `mutate(case_when())`
 
+The `SpatialEpi` implementation of Kulldorff spatial scan statistics does not calculate local relative risk or cluster relative risk.
+Therefore, the next step is to calculate local and cluster relative risk (workflow step 7).
+
+```{r relative-risk}
+total_pop <- sum(acs_covid$pop)
+total_cases <- sum(acs_covid$cases)
+
+acs_covid <- acs_covid %>%
+  group_by(clusterID) %>%
+  mutate(
+    rr_cluster = ifelse(is.na(clusterID), NA,
+      (sum(cases) / sum(pop)) / ((total_cases - sum(cases)) / (total_pop - sum(pop)))
+    )
+  ) %>%
+  ungroup() %>%
+  mutate(
+    rr_loc = (cases / pop) / ((total_cases - cases) / (total_pop - pop))
+  )
+
+rm(total_pop, total_cases)
+```
+
+Classify relative risk on a scale from 1 to 6
+
+Risk is classified according to this table:
+
+| Relative Risk Values | Relative Risk Class |
+|:--------------------:|:-------------------:|
+|  Outside of cluster  |          1          |
+|       RR \< 1        |          1          |
+|    1 \<= RR \< 2     |          2          |
+|    2 \<= RR \< 3     |          3          |
+|    3 \<= RR \< 4     |          4          |
+|    4 \<= RR \< 5     |          5          |
+|    5 \<= RR \< 6     |          6          |
+
+Counties falling outside of any cluster are assigned a score of 1.
+
+```{r classify-relative-risk}
+# class breaks
+breaks <- c(-Inf, 1, 2, 3, 4, 5, Inf)
+
+acs_covid <- acs_covid %>%
+  mutate(
+    cluster_class = ifelse(is.na(clusterID), 1, cut(rr_cluster, breaks, labels = FALSE)),
+    loc_class = cut(rr_loc, breaks, labels = FALSE)
+  )
+```
+
 ### Step 10: Concatenate
 
 `c(state + relative risk)` to produce unique cluster identification codes
 
 ### Check number of clusters - compare to total of 102 in original study
+
+```{r make-gee-clusters}
+# calculate clusters
+acs_covid <- acs_covid %>% mutate(
+  rp_clusID = as.integer(statefp) * 10 + cluster_class
+)
+
+# summarize clustering results
+cluster_summary <- acs_covid %>%
+  dplyr::filter(cases > 0) %>%
+  st_drop_geometry() %>%
+  count(rp_clusID)
+cat(
+  length(cluster_summary$n),
+  "unique clusters based on spatialEpi CLUSTER relative risk\n"
+)
+summary(cluster_summary$n)
+rm(cluster_summary)
+```
 
 ### Map: Qualitative map of clusters
 
