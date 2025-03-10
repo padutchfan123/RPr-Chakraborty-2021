@@ -1,6 +1,6 @@
 ---
 title: "Pre Analysis Plan"
-author: "HEGSRR"
+author: "Samuel Barnard"
 date: "`r Sys.Date()`"
 output: html_document
 editor_options:
@@ -16,8 +16,9 @@ Version 0.1 \| First Created March 10, 2025 \| Updated March 10, 2025
 
 # Abstract
 
-Chakraborty (2021) investigates the relationships between COVID-19 rates and demographic characteristics of people with disabilities by county in the continental United States.
-The aim of the study is to investigate whether people with disabilities (PwDs) face disproportionate challenges due to COVID-19.
+Chakraborty (2021) investigates the relationships between COVID-19 incidence rates and several demographic characteristics of people with disabilities by county in the continental United States. The aim of the study is to investigate whether people with disabilities (PwDs) face disproportionate challenges due to COVID-19.
+
+Continued, from **"Reproduction of Chakraborty 2021: An intracategorical analysis of COVID-19 and people with disabilities"** (Holler et al.):
 To do so, Chakraborty examines the statistical relationship between county incidence rates of COVID-19 cases and county-level percentages of people with disabilities and different socio-demographic characteristics.
 Specifically, Chakraborty tests county-level bivariate correlations between COVID-19 incidence against the percentage of disability as one hypothesis, and tests correlation between COVID-19 incidence and percentage of people with disabilities in 18 different socio-demographic categories of race, ethnicity, poverty status, age, and biological sex.
 Chakraborty then re-tests for the same county-level associations while controlling for spatial dependence.
@@ -27,16 +28,10 @@ Chakraborty (2021) finds significant positive relationships between COVID-19 rat
 
 # Study Design
 
-This reproduction study is motivated by expanding the potential impact of Chakraborty's study for policy, research, and teaching purposes.
-Measuring the relationship between COVID-19 incidence and socio-demographic and disability characteristics can provide important information for public health policy-making and resource allocation.
-A fully reproducible study will increase the accessibility, transparency, and potential impact of Chakraborty's (2021) study by publishing a compendium complete with metadata, data, and code.
-This will allow other researchers to review, extend, and modify the study and will allow students of geography and spatial epidemiology to learn from the study design and methods.
+This study is a reproduction, with the goal of examining Chakraborty's study design and its impact particularly in public policy as well as in fields such as research and education. This reproduction will attempt to reproduce the original study's results.
 
-In this reproduction, we will attempt to identically reproduce all of the results from the original study.
-This will include the map of county level distribution of COVID-19 incidence rates (Fig. 1), the summary statistics for disability and sociodemographic variables and bivariate correlations with county-level COVID-19 incidence rate (Table 1), and the GEE models for predicting COVID-19 county-level incidence rate (Table 2).
+This will include the map of county level distribution of COVID-19 incidence rates (Fig. 1), the summary statistics for disability and socio-demographic variables and bivariate correlations with county-level COVID-19 incidence rate (Table 1), and the GEE models for predicting COVID-19 county-level incidence rate (Table 2).
 A successful reproduction should be able to generate identical results as published by Chakraborty (2021).
-
-The reproduction study data and code are available in public a GitHub repository at [github.com/padutchfan123/RPr-Chakraborty-2021](https://github.com/HEGSRR/RPr-Chakraborty2021) The reproduction is implemented with R markdown using the `SpatialEpi` package for the Kulldorff spatial scan statistic packages and the `geepack` package for the generalized estimating equation.
 
 Chakraborty, J.
 2021.
@@ -155,12 +150,7 @@ knitr::opts_chunk$set(
 
 As of the release of this pre-analysis plan, I have not observed the data past recording the metadata above.
 My experience with the methods of this study stem from an in-class analysis and breakdown of the original study to better understand data sources and transformations.
-In class discussion included exposure to some workflow from previous reproduction studies, which among other things helped to solidify the correct data tables from the ACS to query.
-
-## Bias and threats to validity
-
-The original study is somewhat problematic because there is a scale mismatch between phenomena.
-Also, because there is a very large sample size, almost any value seems significant.
+In-class discussion included exposure to some workflow from a previous reproduction study ("Reproduction of Chakraborty 2021: An intracategorical analysis of COVID-19 and people with disabilities"), which among other things helped to solidify important steps in data acquisition and transformation, for instance the correct data tables from the ACS to query. This prior reproduction was also completed by contacting the original study's researchers for clarification of their process. 
 
 ## Data transformations and Analysis
 
@@ -210,7 +200,7 @@ Subtract results from Chakraborty's Table 1
 
 **Planned Deviation**
 
-### Step 8: Kulldorf method with `SpatialEpi` package
+### Step 8: Kulldorff method with `SpatialEpi` package
 
 ### Map: Spatial Clusters
 
@@ -240,18 +230,9 @@ Present maps, takeaways from comparing data with original study results.
 
 Explain weaknesses in original study design/data, points for improvement.
 
-# Integrity Statement
-
-Include an integrity statement - The authors of this preregistration state that they completed this preregistration to the best of their knowledge and that no other preregistration exists pertaining to the same hypotheses and research.
-If a prior registration *does* exist, explain the rationale for revising the registration here.
-
 # Acknowledgements
-
--   `Funding Name`: name of funding for the project
--   `Funding Title`: title of project grant
--   `Award info URI`: web address for award information
--   `Award number`: award number
 
 This report is based upon the template for Reproducible and Replicable Research in Human-Environment and Geographical Sciences, [DOI:[10.17605/OSF.IO/W29MQ](DOI:%5B10.17605/OSF.IO/W29MQ){.uri}](https://doi.org/10.17605/OSF.IO/W29MQ)
 
 # References
+[github.com/HEGSRR/RPr-Chakraborty2021](https://github.com/HEGSRR/RPr-Chakraborty2021)
