@@ -857,9 +857,9 @@ tm_spatialepi_clusters <-
     tm_fill("gray98") +
   tm_shape(acs_covid) +
   tm_polygons(col = "isCluster",
-          palette = "-Oranges",
+          values = "-Oranges",
           popup.vars = c("fips", "clusterID"),
-          colorNA = NULL,
+          value.na = NULL,
           title = "SpatialEpi Kulldorff COVID-19 Clusters",
           border.col = "white",
           lwd = 0.2,
@@ -1127,12 +1127,12 @@ tm_author_clusters <-
     tm_fill("gray98") +
   tm_shape(acs_covid) +
   tm_polygons(col = "GINI_CLUST",
-              labels = clus_labels,
+              fill.scale = clus_labels,
               border.col = "white",
               lwd = 0.5,
-              palette = c("tomato", "thistle3"),
+              values = c("tomato", "thistle3"),
               popup.vars = c("fips", "clusterID"),
-              colorNA = NULL,
+              value.na = NULL,
               title = "SaTScan Kulldorff COVID-19 Clusters\nCluster Centers") +
   tm_shape(state) +
     tm_borders("grey", lwd = 0.5) +
@@ -1269,8 +1269,8 @@ tm_spatialepi_hier <-
   tm_shape(hier_clusters) +
   tm_polygons(
     col = "xcluster",
-    palette = c("wheat", "tomato", "thistle3"),
-    colorNA = NULL,
+    values = c("wheat", "tomato", "thistle3"),
+    value.na = NULL,
     title = "SaTScan Hierarchical and SpatialEpi Clusters",
     border.col = "white",
     lwd = 0.2,
@@ -1314,8 +1314,8 @@ tm_spatialepi_gini <-
   tm_shape(gini_clusters) +
   tm_polygons(
     col = "xcluster",
-    palette = c("wheat", "tomato", "thistle3"),
-    colorNA = NULL,
+    values = c("wheat", "tomato", "thistle3"),
+    value.na = NULL,
     title = "SaTScan GINI Optimized and SpatialEpi Clusters",
     border.col = "white",
     lwd = 0.2,
