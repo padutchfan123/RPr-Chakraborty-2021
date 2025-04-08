@@ -1,5 +1,5 @@
 ---
-title: "Pre Analysis Plan: Chakraborty (2021) Reproduction Study"
+title: "Chakraborty (2021) Reproduction Study"
 author: "Samuel Barnard"
 date: "`r Sys.Date()`"
 output: html_document
@@ -11,7 +11,7 @@ knit: (function(inputFile, encoding) {
 nocite: '@*'
 ---
 
-Version 0.1 \| First Created March 10, 2025 \| Updated March 10, 2025
+Version 1.0 \| First Created March 10, 2025 \| Updated April 8, 2025
 
 # Abstract
 
