@@ -589,82 +589,6 @@ acs_covid %>%
 The join worked, highlighting the same 13 counties with inconsistent incidence rates.
 This also confirms that our reproduced dependent variable is identical to the original dependent variable with the exception of these three counties.
 
-## From Prof. Holler Workflow!!! TRY TO RUN WITHOUT THIS SECTION!!! Interpret if needed
-
-### Bivariate nonparametric correlation analysis
-
-**Unplanned Deviation for Reproduction**: The dependent and independent variables in this study do not have normal distributions, as shown in the Shapiro-Wilk test results above.
-Therefore, we deviate from the original study to use the Spearman's Rho non-parametric correlation test.
-
-```{r spearmans correlation}
-df <- sum(!is.na(acs_covid$dis_pct)) - 2
-
-spearmans_rho <- acs_covid %>%
-  select(where(is.numeric)) %>%
-  st_drop_geometry() %>%
-  cor(method = "spearman", use = "everything") %>%
-  as.data.frame() %>%
-  select(rho = covid_rate) %>%
-  mutate(
-    t = abs(rho) / sqrt((1 - rho^2) / (df)),
-    p = pt(t, df, lower.tail = FALSE)
-  ) %>%
-  round(3) %>%
-  rownames_to_column("variable") %>%
-  filter(variable != "covid_rate")
-```
-
-Compare the Spearman's *rho* correlation coefficients to the reproduced Pearson's *r* correlation coefficients.
-Differences are calculated as *Spearman's Rho* - *Pearson's R*.
-
-```{r compare-spearmans-correlation}
-# calculate number of significance stars at p<0.01 and P<0.05 levels.
-spearmans_rho <- mutate(spearmans_rho, rp_rho_stars = as.numeric(as.character(cut(p,
-  breaks = c(-0.1, 0.01, 0.05, 1),
-  labels = c(2, 1, 0)
-))))
-
-correlations <- correlations[, 1:8] %>%
-  left_join(select(spearmans_rho, variable, rp_rho = rho, rp_rho_stars), by = "variable")
-
-corrdiff <- select(correlations, starts_with("rp_rho")) -
-  select(correlations, rp_r, rp_stars)
-
-correlations <- correlations %>% bind_cols(rename_with(corrdiff, ~ paste0(.x, "_diff")))
-rm(corrdiff)
-
-correlations <- correlations %>% mutate(rp_rho_dir_diff = (rp_rho > 0) - (rp_r > 0))
-
-correlations %>%
-  select(variable, rp_r, rp_stars, starts_with("rp_rho")) %>%
-  kable(col.names = c("Variable", "R", "Stars", "Rho", "Stars", "Rho - R", "Stars", "Direction"),
-        align = "c") %>%
-  #column_spec(2:6, width_min = "5em") %>%
-  kable_styling() %>%
-  add_header_above(c(" " = 1, "Pearson's" = 2, "Spearman's" = 2, "Difference" = 3))
-```
-
-Three variables change significance levels, with *Native American* and *Other* races gaining significance and *age 18-34* losing significance.
-Two correlations change direction, with both *Native American* race (illustrated in scatterplot below) and *Female* households switching from positive correlations to negative correlations.
-Instabilities between the parametric and non-parametic correlations arise from variables with very skewed distributions and/or weak correlations at the county level.
-Some difference may also be attributable to the 13 counties with data errors in the COVID-19 Incidence Rate.
-In such distributions, outlier observations have more weight in the parametric Person's R test than in the non-parametric Spearman's Rho test.
-
-```{r plot-bivariate, fig.width=4, fig.height=4}
-plot(acs_covid$native_pct,
-  acs_covid$covid_rate,
-  xlab = "Percent Native American",
-  ylab = "COVID-19 Incidence",
-  pch = 16,
-  col = rgb(0, 0, 0, 0.05),
-  cex.lab = 0.8,
-  cex.axis = 0.5,
-)
-lines(abline(lm(acs_covid$covid_rate ~ acs_covid$native_pct)))
-
-rm(spearmans_rho, pearsons_r, correlations, table1, df)
-```
-
 ## *Planned Deviation*
 
 ### Step 8: Kulldorff method with `SpatialEpi` package
@@ -897,43 +821,136 @@ rm(cluster_summary)
 
 We failed to reproduce the same configuration of GEE clusters as the original study, finding 9 more clusters than the original study and a much smaller maximum cluster of 159 counties compared to 245 counties.
 
-### Map: Qualitative map of clusters - UPDATE TO BE CORRECT
+### Map: Qualitative map of clusters
 
-```{r map local relative risk score}
-# count the frequency of counties in each class and create labels
-class_freq <- acs_covid %>% st_drop_geometry() %>% count(loc_class)
-class_freq$qual <- ifelse(class_freq$n > 1, " counties", " county")
-class_freq[1, ]$qual <- paste(class_freq[1, ]$qual, "at low risk")
-class_freq[nrow(class_freq), ]$qual <- paste(class_freq[nrow(class_freq), ]$qual, "at high risk")
-class_freq$label <- paste0(class_freq$loc_class,
-                           " (",
-                           class_freq$n,
-                           class_freq$qual,
-                           ")")
+Reproduce Kulldorff spatial scan statistic in SaTScan
 
-# Map Local Relative Risk scores
-tm_spatialepi_local_risk_class <- tm_shape(acs_covid) +
-  tm_polygons("loc_class",
-    title = "Local Relative Risk Class",
-    border.col = "white",
-    border.alpha = .2,
-    lwd = 0.2,
-    palette = "Oranges",
-    style = "cat",
-    labels = class_freq$label
-  ) +
+**Unplanned deviation for reproduction**: Upon failing to reproduce an identical number of GEE clusters using SpatialEpi in R, we reproduced the procedure in the free but not open SaTScan software, using the current software version 10.1.
+The input data files (`case`, `Coordinates.geo`, and `Population.pop`), and output data files (`sat_scan_rpr.txt`, `sat_scan_rpr.col.shp`, and `sat_scan_rpr.gis.shp`) are found in the `data/derived/public/satscan` directory.
+The `sat_scan_rpr.txt` file reports the model parameters used in addition to results.
+
+Although it is not ideal to intercede with this unplanned deviation at this step, is the first step in the methodology following the Kulldorff spatial scan statistic with a result reported in the original publication.
+
+First, load and verify whether our SaTScan reproduction data compares to the author-provided SaTScan data.
+
+```{r load-satscan-col}
+# load author-provided data
+author_col <- read.dbf(here("data", "raw", "public", "chakraborty", "SatScan_output.dbf")) %>%
+  select(LOC_ID, or_rel_risk = REL_RISK)
+
+# load SaTScan reproduced data
+satscan_rpr_col <- read_sf(here("data", "derived", "public", "satscan", "sat_scan_rpr.col.shp"))
+
+# how many observations?
+cat(
+  nrow(satscan_rpr_col),
+  " reproduced relative risk observations\n",
+  nrow(author_col),
+  " author-provided relative risk observations\n",
+  sep = ""
+)
+
+# join and compare how many observations are identical?
+cat(
+  satscan_rpr_col %>%
+  full_join(author_col, by = "LOC_ID") %>%
+  filter(REL_RISK == or_rel_risk & REL_RISK > 0) %>%
+  nrow(),
+  "reproduced relative risk values match the original author's relative risk values"
+  )
+
+rm(author_col)
+```
+
+Our SaTScan results exactly reproduced the author-provided SaTScan results data.
+
+#### Map SaTScan spatial clusters
+
+Join the SaTScan results to `acs_covid` for mapping and analysis.
+
+```{r join-satscan-to-acs-covid}
+# check if there are any duplicated counties
+cat("Joining",
+    length(satscan_rpr_col$LOC_ID),
+    "records with",
+    length(unique(satscan_rpr_col$LOC_ID)),
+    "unique LOC_ID county values")
+
+# select important non-geographic columns
+satscan_rpr_col_t <- satscan_rpr_col %>%
+  st_drop_geometry() %>%
+  select(fips = LOC_ID, GINI_CLUST, REL_RISK)
+
+# join
+acs_covid <- acs_covid[, 1:which(colnames(acs_covid) == "rp_clusID")] %>%
+  left_join(satscan_rpr_col_t, by = "fips")
+
+rm(satscan_rpr_col_t)
+```
+
+**Unplanned deviation for reproduction**: Visualize the spatial distribution of the author-provided Kulldorff COVID-19 Clusters.
+
+```{r map--author-clusters}
+# count frequencies of each cluster type
+clus_counts <- satscan_rpr_col %>%
+  st_drop_geometry() %>%
+  group_by(GINI_CLUST) %>%
+  summarize(n = n())
+
+# create labels including frequencies in brackets
+clus_labels <- c(paste0("Hierarchical (", clus_counts[1,2], ")"),
+            paste0("GINI Optimized (", clus_counts[2,2], ")"))
+
+# for clusters with only one county, erase the number of counties
+satscan_rpr_col[which(satscan_rpr_col$NUMBER_LOC < 3), ]$NUMBER_LOC <- NA
+
+gini_circle <- satscan_rpr_col %>% filter(GINI_CLUST == 'T')
+hier_circle <- satscan_rpr_col %>% filter(GINI_CLUST == 'F')
+
+tm_author_clusters <-
   tm_shape(state) +
-  tm_borders("grey", lwd = .5) +
+    tm_fill("gray98") +
+  tm_shape(acs_covid) +
+  tm_polygons(col = "GINI_CLUST",
+              fill.scale = clus_labels,
+              border.col = "white",
+              lwd = 0.5,
+              values = c("tomato", "thistle3"),
+              popup.vars = c("fips", "clusterID"),
+              value.na = NULL,
+              title = "SaTScan Kulldorff COVID-19 Clusters\nCluster Centers") +
+  tm_shape(state) +
+    tm_borders("grey", lwd = 0.5) +
+  tm_shape(gini_circle) +
+    tm_borders(col = "thistle4") +
+   # tm_text("NUMBER_LOC", size = 0.5) +
+  tm_shape(hier_circle) +
+    tm_borders(col = "tomato") +
+   # tm_text("NUMBER_LOC", size = 0.5, ymod = 0.4) +
   tm_layout(
     legend.position = c("left", "bottom"),
     legend.title.size = 0.8,
     legend.text.size = 0.5
-  )
+  ) +
+  tm_add_legend('symbol',
+              	col = NA,
+              	border.col = c("tomato", "thistle4"),
+              	size = 0.7,
+              	labels = clus_labels,
+              	title="Cluster Extents")
 
-rm(class_freq)
+tm_author_clusters
 
-tm_spatialepi_local_risk_class
+rm(gini_circle, hier_circle, clus_counts, clus_labels)
 ```
+
+In the map above, clusters containing only one county have no visible circle.
+Clusters containing two counties are encircled, but have no label.
+Clusters containing three or more counties are encircled and labelled with the number of counties.
+
+Note that this version of data only includes the 96 counties defining cluster centers, visualized with fill colors above.
+The data excludes all of the non-center counties in clusters with more than one county.
+The extent of these larger clusters is visualized by unfilled circles defined by cluster radii.
 
 ### Step 11: Compare data with GEE results (`Aug1GEE`)
 
@@ -945,6 +962,105 @@ Additionally, the author noted that "clusters of observations must be defined ba
 These specifications were chosen after testing each alternative and choosing the models with the best quasilikelihood under the independence model criterion (QIC).
 
 This accomplishes the step 11 of the workflow diagram.
+
+#### Preprocess data for GEE modelling
+
+**Unplanned deviation for reanalysis**: Based on the three observations above, we think that it would be more valid to choose one set of secondary clusters based on a single method rather than combining a set of hierarchical clusters with a set of GINI optimized clusters.
+We also think that it would be more valid to include risk levels for all counties within a cluster (i.e. all counties within any of the circles above), rather than only the county at the center of a cluster.
+Finally, we think it would be more valid to treat clusters as a single category rather than five tiers of above-normal risk.
+
+To complete the reproduction/reanalysis study, we will therefore calculate and compare multiple versions of the GEE models:
+
+1.  Original study results
+2.  Original study data in geepack
+3.  SpatialEpi cluster classification in geepack
+4.  SpatialEpi binary clusters in geepack
+
+### Unique GEE cluster IDs
+
+First, calculate GEE cluster IDs.
+
+We have already calculated: - `rp_clusID` based on our SpatialEpi clusters - `ss_clusID` based on our SaTScan cluster centers, and shown to be identical to the original author's data - `gini_clusID` based on our SaTScan GINI-optimized clusters
+
+### Filter and standardize data
+
+Second, filter the data for non-zero COVID-19 rates and z-score standardize the independent variables.
+This accomplishes step 10 of the workflow diagram.
+
+**Unplanned deviation for reproduction:** We assumed that we should filter for COVID rates \> 0 first and then calculate z-scores, however after comparing data in the next code block, we realized that the original study had *first* calculated z-scores and *then* filtered for COVID rates \> 0.
+Therefore, to align with the original study, in the next code block we first calculate z-scores and then filter for COVID rates \> 0.
+
+```{r filter-standardize}
+gee_data <- acs_covid %>%
+# filter(covid_rate > 0) %>% # moved filtering to after z-score calculation
+  mutate(
+    z_white_pct = scale(white_pct),
+    z_black_pct = scale(black_pct),
+    z_native_pct = scale(native_pct),
+    z_asian_pct = scale(asian_pct),
+    z_other_pct = scale(other_pct),
+    z_non_hisp_white_pct = scale(non_hisp_white_pct),
+    z_hisp_pct = scale(hisp_pct),
+    z_non_hisp_non_white_pct = scale(non_hisp_non_white_pct),
+    z_bpov_pct = scale(bpov_pct),
+    z_apov_pct = scale(apov_pct),
+    z_pct_5_17 = scale(pct_5_17),
+    z_pct_18_34 = scale(pct_18_34),
+    z_pct_35_64 = scale(pct_35_64),
+    z_pct_65_74 = scale(pct_65_74),
+    z_pct_75 = scale(pct_75),
+    z_male_pct = scale(male_pct),
+    z_female_pct = scale(female_pct)
+  ) %>%  
+  filter(covid_rate > 0) # moved filtering from before z-score calculation
+```
+
+Compare independent variables for GEE models by subtracting the original values from the reproduced values, and finding the average and standard deviation of difference for each variable.
+
+```{r compare-indp-vars}
+# subtract original data matrix (table) from reproduced data matrix (table)
+# select, filter, and arrange (sort) data to make identical matrix sizes with
+# identical order of observations (counties)
+gee_diff <-
+  (gee_data %>%
+    st_drop_geometry() %>%  
+    arrange(as.integer(fips)) %>%
+    select(starts_with("z_"))  -
+  original_gee %>%
+    filter(Cases > 0) %>%
+    arrange(COUNTY_FIPS) %>%
+    select(starts_with("ZPD"))) %>%
+  round(digits = 3)
+
+# print results
+# this would be better as a table
+cat("Summary of difference between reproduction independent variables and original independent variables")
+cat("\n")
+cat("Mean:\n")
+colMeans(gee_diff) %>% round(digits = 3)
+cat("\nStandard deviation:\n")
+apply(gee_diff, 2, sd) %>% round(digits = 3)
+```
+
+When we had filtered for COVID rates \> 0 first and then z-score standardized second, the means of differences ranged from -0.012 to 0.004, and standard deviations of differences ranged from 0.000 to 0.016.
+
+After changing the order to first z-score standardize and then filter for COVID rates \> 0, we observed no mean difference between our reproduced variables and the original variables, and we find no standard deviation \> 0.001 for the difference between reproduction independent variables and original variables.
+There are no major differences between the independent variables.
+
+#### Save final derived data
+
+Optionally, you may save the preprocessed data to `data/raw/public/gee_data.gpkg`
+
+```{r save preprocessed COVID cluster data, eval = FALSE}
+write_sf(gee_data, here("data", "derived", "public", "gee_data.gpkg"))
+# add saving acs_covid data
+```
+
+Optionally, you may load the preprocessed data from `data/raw/public/gee_data.gpkg`
+
+```{r load preprocessed COVID cluster data, eval = FALSE}
+gee_data <- read_sf(here("data", "derived", "public", "gee_data.gpkg"))
+```
 
 Generalized Estimating Equation parameters:
 
@@ -1053,51 +1169,6 @@ onegee <- function(gee_data, dep_var, id, term_names) {
 
   return(return_data)
 }
-```
-
-### Original Clusters and Original COVID-19 Rate
-
-Calculate GEE models with: - Clustering: SaTScan cluster centers & State ID - Dependent variable: original COVID-19 incidence (including errors).
-
-```{r gee-original-clusters-original-incidence}
-gee_or_clus_ordep <- gee_data %>% onegee(
-                    dep_var = "or_incidence",
-                    id = gee_data$ss_clusID,
-                    term_names = table2$term)
-gee_or_clus_ordep$coefficients %>%
-  kable(caption = "Original Cluster IDs and Original COVID-19 Incidence",
-        align = "c") %>%
-  kable_styling()
-```
-
-### Original Clusters and Corrected COVID-19 Rate
-
-Calculate GEE models with: - Clustering: SaTScan cluster centers & State ID - Dependent variable: reproduced COVID-19 incidence (corrected errors).
-
-```{r gee-original-clusters-reproduced-incidence}
-gee_or_clus_rpdep <- onegee(gee_data,
-                    dep_var = "covid_rate",
-                    id = gee_data$ss_clusID,
-                    term_names = table2$term)
-gee_or_clus_rpdep$coefficients %>%
-  kable(caption = "Original Cluster IDs and Reproduced COVID-19 Incidence",
-        align = "c") %>%
-  kable_styling()
-```
-
-### GINI Clusters and Fixed COVID-19 Rate
-
-Calculate GEE models with: - Clustering: Reproduced SaTScan GEE clusters & State ID - Dependent variable: reproduced COVID-19 incidence (fixed errors).
-
-```{r gee-gini-clusters-reproduced-incidence}
-gee_gini_clus_rpdep <- onegee(gee_data,
-                    dep_var = "covid_rate",
-                    id = gee_data$gini_clusID,
-                    term_names = table2$term)
-gee_gini_clus_rpdep$coefficients %>%
-  kable(caption = "Reproduced SaTScan GINI Cluster IDs and Reproduced COVID-19 Incidence",
-        align = "c") %>%
-  kable_styling()
 ```
 
 ### SpatialEpi Clusters and Fixed COVID-19 Rate
