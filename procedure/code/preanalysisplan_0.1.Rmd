@@ -115,7 +115,7 @@ if(!require(here)){
 groundhog.day <- "2025-02-01"
 
 groundhog.library(packages, groundhog.day,
-                  tolerate.R.version='4.4.1')
+                  tolerate.R.version='4.4.2')
 # you may need to...
 # install a correct version of R
 # install the rstudioapi package with install.packages("rstudioapi")
@@ -413,25 +413,6 @@ acs_covid_stats <- acs_covid %>%
 acs_covid_stats %>%
   kable(caption = "Reproduced Descriptive Statistics",
         align = "c")
-```
-
-Compare reproduced descriptive statistics to original descriptive statistics.
-Difference is calculated as 'reproduction study - original study'.
-Identical results will result in zero.
-
-```{r compare-descriptive-stats}
-# load original table 1 results
-table1 <- read.csv(here("data", "raw", "public", "chakraborty", "table1.csv"))
-
-# subtract original results from reproduced results
-(select(acs_covid_stats, min, max, mean, SD) -
-  select(table1, min, max, mean, SD)) %>%
-  kable(caption = "Descriptive Statistics Comparison",
-        align = "c") %>%
-  column_spec(2:5, width = "4em") %>%
-  kable_styling(full_width = FALSE)
-
-rm(acs_covid_stats)
 ```
 
 ### Step 7: Bivariate Pearson product-moment correlations
