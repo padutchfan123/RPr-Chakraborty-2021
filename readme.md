@@ -10,7 +10,7 @@
 
 **This compendium and version of the reproduction (partial reproduction) is a project for Open Source GIScience**
 
-[Samuel Barnard\*](https://github.com/padutchfan123) (open Source GIScience student)
+[Samuel Barnard](https://github.com/padutchfan123) (open Source GIScience student)
 
 ## Abstract
 
