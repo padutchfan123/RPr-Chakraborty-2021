@@ -11,7 +11,7 @@ knit: (function(inputFile, encoding) {
 nocite: '@*'
 ---
 
-Version 1.0 \| First Created March 10, 2025 \| Updated April 8, 2025
+Version 1.0 \| First Created March 10, 2025 \| Updated May 16, 2025
 
 # Abstract
 
@@ -473,8 +473,9 @@ rm(acs_covid_stats)
 ```
 
 Compare the reproduced Pearson's *r* correlation coefficients to the original study's Pearson's *r* correlation coefficients.
-Stars indicates the significance level with two stars for `p < 0.01` and one star for `p < 0.05`.
-Correlation difference `rp_r_diff` is calculated between the reproduction study `rp_r` and original study `or_r` as `rp_r_diff = rp_r - or_r` Direction difference `rp_dir_diff` is calculated as `(rp_r > 0) - (or_r > 0)`, giving `0` if both coefficients have the same direction, `1` if the reproduction is positive and the original is negative, and `-1` if the reproduction is negative but the original is positive.
+(Stars indicates the significance level with two stars for `p < 0.01` and one star for `p < 0.05`.)
+
+Note: Correlation difference `rp_r_diff` is calculated between the reproduction study `rp_r` and original study `or_r` as `rp_r_diff = rp_r - or_r` Direction difference `rp_dir_diff` is calculated as `(rp_r > 0) - (or_r > 0)`, giving `0` if both coefficients have the same direction, `1` if the reproduction is positive and the original is negative, and `-1` if the reproduction is negative but the original is positive.
 
 ```{r compare-pearsons-correlation}
 # calculate number of significance stars at p < 0.01 and p < 0.05 levels.
@@ -508,7 +509,9 @@ correlations %>%
 ```
 
 Reproduction correlation coefficients varied slightly from the original study coefficients by +/- 0.006.
-All but one Pearson's correlation coefficient was significant to the same level, and the exception was age 18 to 34.
+
+All Pearson's correlation coefficients were significant to the same level, except for age 18 to 34.
+
 Counter-intuitively, the correlation coefficient was slightly closer to 0 but the *p* value was also found to be more significant, suggesting a difference in the estimation of *t* and/or *p*, or a typographical error.
 All of the coefficients had the same direction.
 
@@ -535,10 +538,9 @@ original_gee %>%
   kable_styling(full_width = FALSE)
 ```
 
-The author's original data produced coefficients identical to the original publication!
-Is it possible that the data values are correct but have been reassigned / transposed to different counties?
+The author's original data produced coefficients identical to the original study.
 
-*Unplanned Deviation for Reproduction*: Considering the precise bitwise reproduction of descriptive statistics and of correlation statistics from author-provided data, we decided to recalculate the COVID-19 incidence rate with author-provided case and population data for comparison to the author-provided incidence rate.
+*Unplanned Deviation for Reproduction*: Considering the precise bitwise reproduction of descriptive statistics and of correlation statistics from author-provided data, we will recalculate the COVID-19 incidence rate with author-provided case and population data for comparison to the author-provided incidence rate.
 
 ```{r compare-incidence-rate}
 # recalculate Incidence Rate
@@ -1190,15 +1192,19 @@ gee_rp_clus_rpdep$coefficients %>%
 
 Present maps, takeaways from comparing data with original study results.
 
-create map of original clusters versus reproduction clusters side by side
+```{r}
+tmap_arrange(tm_author_clusters, tm_spatialepi_clusters)
+```
 
 # Discussion
 
-Explain weaknesses in original study design/data, points for improvement.
+The resulting figures likely indicate a "success" for this partial reproduction, due to the fact that most of the reproduced tables' values were close to the original study. Further, the reproduction methods uncovered the fact that several counties had incorrect COVID incidence scores, resulting in inaccurate correlation coefficients, an important finding. Although this procedure code had many deviations from the original workflow, some planned and others unplanned, this reproduction was also successful overall in expanding the visualization of the original study's methods by including maps of disability rates and clusters. This reproduction also compared the results of SpatialEpi Kulldorf clusters, which were similar, yet more accurate than the author's original SaTScan clusters. 
 
 # Acknowledgements
 
 This report is based upon the template for Reproducible and Replicable Research in Human-Environment and Geographical Sciences, [DOI:[10.17605/OSF.IO/W29MQ](DOI:%5B10.17605/OSF.IO/W29MQ){.uri}](https://doi.org/10.17605/OSF.IO/W29MQ)
+
+The majority of this code is adapted from a reproduction of the same study by Joseph Holler, Junyi Zhou, Peter Kedron, Drew An-Pham, Derrick Burt.
 
 # References
 [github.com/HEGSRR/RPr-Chakraborty2021](https://github.com/HEGSRR/RPr-Chakraborty2021)
